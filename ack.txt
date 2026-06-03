@@ -1,0 +1,68 @@
+SERVER
+
+int main() {
+    int sfd, nfd, clen;
+    struct sockaddr_in caddr, saddr;
+    char buf[50];
+    char f = '0';  // Frame number (0 or 1)
+    
+    sfd = socket(AF_INET, SOCK_STREAM, 0);
+    saddr.sin_family = AF_INET;
+    saddr.sin_addr.s_addr = inet_addr("127.0.0.1");
+    saddr.sin_port = 9000;
+    
+    bind(sfd, (struct sockaddr *)&saddr, sizeof(saddr));
+    listen(sfd, 1);
+    clen = sizeof(caddr);
+    nfd = accept(sfd, (struct sockaddr *)&caddr, &clen);
+    
+    while(1) {
+        sleep(1);
+        for(int i=0; i<<5; i++) buf[i] = '0';
+        buf[0] = f;  // Frame number in first position
+        
+        // Send frame
+        send(nfd, buf, 5, 0);
+        
+        // Wait for ACK
+        for(int i=0; i<<5; i++) buf[i] = '0';
+        recv(nfd, buf, 5, 0);
+        printf("ACK: %s\n", buf);
+        
+        // Toggle frame number
+        if(f == '0') f = '1';
+        else f = '0';
+    }
+    return 0;
+}
+
+CLIENT 
+
+int main() {
+    int sfd;
+    struct sockaddr_in saddr;
+    char buf[50];
+    
+    sfd = socket(AF_INET, SOCK_STREAM, 0);
+    saddr.sin_family = AF_INET;
+    saddr.sin_addr.s_addr = inet_addr("127.0.0.1");
+    saddr.sin_port = 9000;
+    
+    connect(sfd, (struct sockaddr *)&saddr, sizeof(saddr));
+    
+    while(1) {
+        sleep(1);
+        for(int i=0; i<<5; i++) buf[i] = '0';
+        
+        // Receive frame
+        recv(sfd, buf, 5, 0);
+        printf("FRAME: %s\n", buf);
+        
+        // Send ACK (toggle the received bit)
+        if(buf[0] == '0') buf[0] = '1';
+        else buf[0] = '0';
+        
+        send(sfd, buf, 5, 0);
+    }
+    return 0;
+}

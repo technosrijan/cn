@@ -1,0 +1,88 @@
+CLIENT 
+
+#include <stdio.h>
+#include <string.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+
+#define PORT 5512
+#define BUF_SIZE 1024
+
+int main() {
+    int sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+    
+    struct sockaddr_in server_addr;
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_port = htons(PORT);
+    server_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+    
+    char buffer[BUF_SIZE];
+    socklen_t len = sizeof(server_addr);
+    
+    printf("UDP Chat Client Started...\n");
+    
+    while(1) {                              // ← INFINITE LOOP
+        // STEP 1: TYPE AND SEND
+        printf("Client: ");
+        fgets(buffer, BUF_SIZE, stdin);     // Read user input (includes \n)
+        
+        sendto(sockfd, buffer, strlen(buffer)+1, 0,
+               (struct sockaddr *)&server_addr, len);
+        
+        // STEP 2: RECEIVE REPLY
+        recvfrom(sockfd, buffer, BUF_SIZE, 0, NULL, NULL);
+        printf("Server: %s", buffer);       // buffer already has \n from fgets
+    }
+    
+    close(sockfd);
+    return 0;
+}
+
+SERVER 
+
+#include <stdio.h>
+#include <string.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+
+#define PORT 5512
+#define BUF_SIZE 1024
+
+int main() {
+    int sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+    
+    struct sockaddr_in server_addr, client_addr;
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_port = htons(PORT);
+    server_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+    
+    bind(sockfd, (struct sockaddr *)&server_addr, sizeof(server_addr));
+    
+    char buffer[BUF_SIZE];
+    socklen_t len = sizeof(client_addr);
+    
+    printf("UDP Chat Server Started...\n");
+    
+    while(1) {                              // ← INFINITE LOOP
+        // STEP 1: RECEIVE FROM CLIENT
+        recvfrom(sockfd, buffer, BUF_SIZE, 0,
+                 (struct sockaddr *)&client_addr, &len);
+        printf("Client: %s", buffer);
+        
+        // STEP 2: TYPE AND SEND REPLY
+        printf("Server: ");
+        fgets(buffer, BUF_SIZE, stdin);
+        
+        sendto(sockfd, buffer, strlen(buffer)+1, 0,
+               (struct sockaddr *)&client_addr, len);
+    }
+    
+    close(sockfd);
+    return 0;
+}
