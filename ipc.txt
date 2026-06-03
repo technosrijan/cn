@@ -1,0 +1,82 @@
+SENDER
+
+#include <stdio.h>
+#include <string.h>
+#include <sys/types.h>
+#include <sys/ipc.h>
+#include <sys/msg.h>
+
+#define MAX 100
+
+// Step 1: Define the message structure
+struct msg_buffer {
+    long msg_type;
+    char msg_text[MAX];
+} message;
+
+int main() {
+    // Step 2: Generate a unique key
+    // "Progfile" = any file that exists on your system
+    // 65 = any project ID (1-255)
+    key_t key = ftok("Progfile", 65);
+    
+    // Step 3: Create or access the message queue
+    // 0666 = permissions (read/write for all)
+    // IPC_CREAT = create if doesn't exist
+    int msgid = msgget(key, 0666 | IPC_CREAT);
+    
+    // Step 4: Prepare the message
+    message.msg_type = 1;           // Type 1 (any positive number)
+    printf("Write data: ");
+    fgets(message.msg_text, MAX, stdin);  // Read from keyboard
+    
+    // Step 5: Send it
+    // msgid = which queue
+    // &message = the message struct
+    // sizeof(message.msg_text) = size of just the text part
+    // 0 = flags (no special flags)
+    msgsnd(msgid, &message, sizeof(message.msg_text), 0);
+    
+    printf("Data sent: %s\n", message.msg_text);
+    
+    return 0;
+}
+
+RECEIVER 
+
+#include <stdio.h>
+#include <string.h>
+#include <sys/types.h>
+#include <sys/ipc.h>
+#include <sys/msg.h>
+
+#define MAX 100
+
+struct msg_buffer {
+    long msg_type;
+    char msg_text[MAX];
+} message;
+
+int main() {
+    // SAME key — must match sender exactly
+    key_t key = ftok("Progfile", 65);
+    
+    // SAME queue ID
+    int msgid = msgget(key, 0666 | IPC_CREAT);
+    
+    // Step 4: Receive message
+    // msgid = which queue
+    // &message = where to store it
+    // sizeof(message.msg_text) = max size to read
+    // 1 = which msg_type to read (only type 1)
+    // 0 = flags (no special flags)
+    msgrcv(msgid, &message, sizeof(message.msg_text), 1, 0);
+    
+    printf("Data received: %s\n", message.msg_text);
+    
+    // Step 5: DESTROY the queue (important!)
+    // IPC_RMID = remove ID
+    msgctl(msgid, IPC_RMID, NULL);
+    
+    return 0;
+}
